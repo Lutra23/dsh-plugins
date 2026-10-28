@@ -1,0 +1,35 @@
+{
+  "name": "@dsh-external/dsh-memo-recall",
+  "description": "DSH passive recall pinned within each user-message or active-Todo boundary.",
+  "version": "0.4.13",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": [
+    "lib/*.js",
+    "cordis.patch.yml",
+    "test/"
+  ],
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "scripts": {
+    "test": "node test/selftest.mjs && node --test test/parser.test.mjs test/boundaries.test.mjs test/recall-sections.test.mjs test/pulse.test.mjs test/pulse-channel.test.mjs test/stage-gate.test.mjs test/psjd-rules.test.mjs"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

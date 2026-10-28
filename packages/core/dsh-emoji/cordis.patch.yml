@@ -1,0 +1,5 @@
+# dsh-emoji bundle patch: registers the 表情包 host tool + its /api/dsh-emoji/* routes.
+# Install with `dsh plugin --profile desktop add link:<this-directory>`.
+- insert:
+    - id: emoji
+      name: '@dsh-external/dsh-emoji'

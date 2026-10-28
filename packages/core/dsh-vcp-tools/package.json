@@ -1,0 +1,34 @@
+{
+  "name": "@dsh-external/dsh-vcp-tools",
+  "description": "Persistent VCP bridge tools for the dsh web profile: doubao_search, lightmemo, dailynote_write (create/update/organize with folder whitelist), dailynote_read (list/read/search/associate), chrome_bridge.",
+  "version": "0.2.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "README.md",
+    "cordis.patch.yml",
+    "lib/",
+    "package.json",
+    "test/"
+  ]
+}

@@ -1,0 +1,5 @@
+# dsh-project-forge bundle patch: registers the 工程施工台 / 代码搜索器 host tools plugin.
+# Install with `dsh plugin --profile <name> add <this-directory>`.
+- insert:
+    - id: project-forge
+      name: '@dsh-external/dsh-project-forge'

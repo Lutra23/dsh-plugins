@@ -1,0 +1,13 @@
+# dsh-workspace-docs bundle patch。
+#
+# 入口用相对路径：Loader 会把 `./` 解析成相对本文件的 file URL，所以插件装到
+# 任何位置（dev-plugins / installed-plugins / 别人的机器）都能加载，
+# 不需要在任何地方写死绝对路径。
+- insert:
+    - id: workspace-docs
+      name: './index.js'
+      config:
+        maxTopLevel: 50
+        maxDocsPerDir: 12
+        maxBytes: 2500
+        order: 130

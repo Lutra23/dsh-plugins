@@ -1,0 +1,5 @@
+# vcp bridge tools bundle patch: registers the host tools plugin into the web profile roster.
+# Install with `dsh plugin --profile web add <this-directory>`.
+- insert:
+    - id: vcp-tools
+      name: '@dsh-external/dsh-vcp-tools'

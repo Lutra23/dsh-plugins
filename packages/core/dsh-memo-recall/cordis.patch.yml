@@ -1,0 +1,5 @@
+# memo-recall bundle patch: registers the host plugin into the profile roster.
+# Install with `dsh plugin --profile <profile> add <this-directory>`.
+- insert:
+    - id: memo-recall
+      name: '@dsh-external/dsh-memo-recall'

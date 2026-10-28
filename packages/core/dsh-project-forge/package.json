@@ -1,0 +1,72 @@
+{
+  "name": "@dsh-external/dsh-project-forge",
+  "description": "工程化施工台（ProjectForge）与代码搜索器（CodeSearcher）的 DSH 移植版：行级代码施工、AST 符号寻址、快照回退、todo 与验收报告，全部命令由 DSH 工具直接调用，不依赖 VCP。",
+  "version": "0.4.1-local.5",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-sidebar-right",
+        "@deepseek-ai/dsh-client-ui-connection"
+      ],
+      "platform": "web"
+    },
+    "bundle": {
+      "patch": [
+        "./cordis.patch.yml",
+        "./preset.patch.yml",
+        "./context-presets.patch.yml"
+      ]
+    }
+  },
+  "scripts": {
+    "selftest": "node test/selftest.cjs",
+    "test": "node --test test/edit-args-guard.test.cjs test/symbol-ref.test.cjs test/reliability.test.cjs test/boundaries.test.cjs test/native-panel.test.cjs test/task-policy.test.cjs test/bridge.test.cjs test/engine-compatibility.test.cjs test/handoff.test.cjs test/relay-sync.test.cjs test/goal-store.test.cjs test/goal-scheduler.test.cjs test/goal-evidence.test.cjs test/goal-evidence-engine.test.cjs test/jev-client.test.cjs test/goal-judgments.test.cjs test/decision-policy.test.cjs test/goal-focus.test.cjs test/goal-interrupt.test.cjs test/goal-focus-engine.test.cjs test/goal-stall.test.cjs test/goal-stall-engine.test.cjs test/goal-acceptance.test.cjs test/goal-acceptance-engine.test.cjs test/goal-plan.test.cjs test/goal-plan-engine.test.cjs test/goal-relay.test.cjs test/goal-relay-engine.test.cjs test/goal-capacity.test.cjs test/goal-capacity-engine.test.cjs test/goal-snapshot.test.cjs test/goal-snapshot-engine.test.cjs test/document-versions.test.cjs test/goal-repair.test.cjs test/goal-control-engine.test.cjs test/vcp-jev-pool.test.cjs",
+    "jev-eval": "node scripts/jev-eval.cjs",
+    "ga-acceptance": "node scripts/ga-acceptance.cjs",
+    "doctor": "node scripts/doctor.cjs",
+    "schema-report": "node scripts/schema-report.cjs"
+  },
+  "dependencies": {
+    "@eslint/js": "9.39.1",
+    "better-sqlite3": "13.0.3",
+    "chardet": "2.1.0",
+    "diff-match-patch": "1.0.5",
+    "eslint": "9.39.1",
+    "glob": "10.5.0",
+    "globals": "14.0.0",
+    "iconv-lite": "0.6.3"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*",
+    "@dsh-external/dsh-forge-context": "*"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "README.md",
+    "context-presets.patch.yml",
+    "cordis.patch.yml",
+    "lib/",
+    "package.json",
+    "preset.patch.yml",
+    "tools/",
+    "ui/",
+    "vendor/"
+  ]
+}

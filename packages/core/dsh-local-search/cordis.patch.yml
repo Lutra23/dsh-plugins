@@ -1,0 +1,5 @@
+# dsh-local-search bundle patch: registers the ported VCP Everything search tool into the profile roster.
+# Install with `dsh plugin --profile <desktop|web> add <this-directory>`.
+- insert:
+    - id: local-search
+      name: '@dsh-external/dsh-local-search'

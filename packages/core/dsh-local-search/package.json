@@ -1,0 +1,37 @@
+{
+  "name": "@dsh-external/dsh-local-search",
+  "description": "Ported VCP LocalSearchController as a persistent DSH tool: everything_search (millisecond whole-machine file search backed by Everything).",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "test": "node test/smoke.mjs"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "README.md",
+    "cordis.patch.yml",
+    "lib/",
+    "package.json",
+    "test/"
+  ]
+}

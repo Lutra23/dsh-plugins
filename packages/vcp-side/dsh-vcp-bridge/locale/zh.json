@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "DSH/VCP 双模式",
+    "description": "提供 VCP 兼容模式与 DSH/VCP 双栈模式，保留 DSH 原生工具、子 Agent、AA 协同和统一审批。"
+  }
+}

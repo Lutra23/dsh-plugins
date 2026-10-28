@@ -1,0 +1,5 @@
+# dsh-code-tools bundle patch: registers the ported VCP code toolbox into the profile roster.
+# Install with `dsh plugin --profile <desktop|web> add <this-directory>`.
+- insert:
+    - id: code-tools
+      name: '@dsh-external/dsh-code-tools'

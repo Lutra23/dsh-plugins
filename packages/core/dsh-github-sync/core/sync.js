@@ -1,0 +1,594 @@
+/**
+ * Sync orchestration: discover, plan, verify, publish.
+ *
+ * The plan is always computed before anything is published, and it is what both
+ * the preview tool and the push tool render, so what a human approves is exactly
+ * what runs. Publishing is idempotent in the way git is: the same manifest
+ * produces no commit at all, and the commit that does happen always contains
+ * exactly the clean copy — never a build artifact, a cache, or a runtime state
+ * file, including one that an earlier publish had committed.
+ */
+
+import { existsSync, writeFileSync } from 'node:fs'
+import { basename, delimiter, isAbsolute, join, resolve, sep } from 'node:path'
+
+import { DSH_HOME, STATUS_FILE, USER_CONFIG } from './config.js'
+import { discoverPlugins, explicitTarget } from './discover.js'
+import { createRepository, describeRepository, setTopics, whoAmI } from './github.js'
+import { publish } from './git.js'
+import { buildLicenseEntry, licenseFileOf } from './license.js'
+import { buildManifest } from './manifest.js'
+
+/** Terminal states a plugin's sync can end in. */
+export const OUTCOMES = ['pushed', 'unchanged', 'created+pushed', 'planned', 'skipped', 'failed']
+
+/**
+ * Where one plugin's persistent mirror lives.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @param {string} repo - the repository (and mirror) name.
+ * @returns {string} absolute mirror path.
+ */
+export function mirrorFor(config, repo) {
+	return join(config.mirrorsDir, repo)
+}
+
+/**
+ * The credential helper's home: beside the mirrors, never inside one, so it can
+ * never be staged into a commit.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @returns {string} absolute helper path.
+ */
+export function helperFor(config) {
+	return join(config.mirrorsDir, '.credential-helper.mjs')
+}
+
+/**
+ * The directories searched for plugins, in priority order.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @param {string | undefined} cwd - the requesting session's working directory.
+ * @returns {string[]} absolute scan roots, deduplicated.
+ */
+export function scanRoots(config, cwd) {
+	const roots = []
+	for (const candidate of [cwd, config.workspaceRoot, ...config.pluginDirs]) {
+		if (typeof candidate !== 'string' || candidate.trim() === '') continue
+		const value = candidate.trim()
+		if (!roots.some((existing) => existing.toLowerCase() === value.toLowerCase())) roots.push(value)
+	}
+	return roots
+}
+
+/**
+ * Render a commit subject from the configured template.
+ *
+ * @param {string} template - template with `{name}`, `{version}`, `{repo}`, `{stamp}`.
+ * @param {DiscoveredPlugin} plugin - the plugin being published.
+ * @returns {string} the commit subject.
+ */
+function commitMessage(template, plugin) {
+	return String(template)
+		.replace(/\{name\}/g, plugin.name ?? plugin.repo)
+		.replace(/\{version\}/g, plugin.version ?? '0.0.0')
+		.replace(/\{repo\}/g, plugin.repo)
+		.replace(/\{stamp\}/g, new Date().toISOString().replace('T', ' ').slice(0, 16) + 'Z')
+}
+
+/**
+ * Format a byte count for human eyes.
+ *
+ * @param {number} bytes - the count.
+ * @returns {string} a short human-readable size.
+ */
+export function humanBytes(bytes) {
+	if (bytes < 1024) return `${bytes} B`
+	if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
+	return `${(bytes / 1024 / 1024).toFixed(2)} MiB`
+}
+
+/**
+ * Whether the git executable is reachable at all.
+ *
+ * @param {string} executable - configured executable name or path.
+ * @returns {{ ok: boolean, resolved?: string, hint?: string }} the probe result.
+ */
+export function resolveGit(executable) {
+	const names = process.platform === 'win32' && !executable.includes('/') && !executable.includes('\\') ? [`${executable}.exe`, executable] : [executable]
+	const pathEntries = (process.env.PATH ?? '').split(delimiter).filter((entry) => entry !== '')
+	for (const name of names) {
+		if (name.includes('/') || name.includes('\\')) {
+			// A path-shaped executable needs a real existence check, which the first
+			// git invocation performs; report it as plausible here.
+			return { ok: true, resolved: name }
+		}
+		for (const entry of pathEntries) {
+			const candidate = join(entry, name)
+			if (existsSync(candidate)) return { ok: true, resolved: candidate }
+		}
+	}
+	return {
+		ok: false,
+		hint: `在 PATH 里找不到「${executable}」。装好 Git for Windows 后重启应用，或在 sync.config.json 的 git.executable 写完整路径（例如 C:\\Program Files\\Git\\cmd\\git.exe）。`,
+	}
+}
+
+/**
+ * Find configuration for an explicitly requested target.
+ *
+ * An explicit target has no single obvious config key — it was named by path —
+ * so several spellings are accepted, in order of specificity. Without this, a
+ * human who wanted a different repository name for a named directory would have
+ * to guess the exact string someone else would type months later.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @param {string} requested - the value as it was requested.
+ * @param {string} absolute - the resolved absolute directory.
+ * @returns {object} the entry, or an empty object.
+ */
+function targetEntry(config, requested, absolute) {
+	const table = config.plugins ?? {}
+	for (const key of [requested, absolute, basename(absolute)]) {
+		const entry = table[key]
+		if (entry !== undefined && entry !== null && typeof entry === 'object') return entry
+	}
+	return {}
+}
+
+/**
+ * Whether a request names a location rather than a plugin.
+ *
+ * Deliberately generous: a directory that exists is what matters, and the check
+ * for that happens afterwards. An absolute path, or anything carrying a path
+ * separator, is read as a location; a bare word is read as a name first, and only
+ * becomes a location if a directory of that name sits under the workspace.
+ *
+ * @param {string} value - one `only` entry.
+ * @returns {boolean} true when the value should be resolved as a path.
+ */
+function looksLikePath(value) {
+	return isAbsolute(value) || value.includes('/') || value.includes(sep)
+}
+
+/**
+ * Build the sync plan: one entry per discovered plugin, with its manifest and
+ * every problem that would stop it, but no side effects at all.
+ *
+ * @param {object} options - plan inputs.
+ * @param {ResolvedConfig} options.config - resolved configuration.
+ * @param {string | undefined} options.cwd - the requesting session's workspace.
+ * @param {string[]} [options.only] - publish only these plugin keys or repository names.
+ * @returns {{ roots: { path: string, exists: boolean }[], entries: PlanEntry[], problems: string[] }} the plan.
+ */
+export function plan({ config, cwd, only }) {
+	const roots = scanRoots(config, cwd)
+	const discovery = discoverPlugins({ roots, plugins: config.plugins })
+	const problems = []
+
+	const wanted = Array.isArray(only) ? only.map((value) => String(value).trim()).filter((value) => value !== '') : []
+	const selected = []
+	for (const plugin of discovery.plugins) {
+		if (wanted.length === 0) {
+			selected.push(plugin)
+			continue
+		}
+		const matches = wanted.some(
+			(value) =>
+				value === plugin.key ||
+				value === plugin.repo ||
+				value === plugin.dirName ||
+				value === plugin.name ||
+				value === plugin.configKey,
+		)
+		if (matches) selected.push(plugin)
+	}
+
+	// Anything the scan did not recognise is still publishable when it names a
+	// directory: the scan lists what happens to be around, and the permission to
+	// publish comes from the human's request, not from the scan's heuristics. A
+	// session already working inside a project is often the best-informed party
+	// about what should ship, and a `package.json` marker has nothing to do with
+	// whether that project may be published.
+	//
+	// A bare word is tried as a name first and as a directory second, so both
+	// `/git 推送 my-app` and `/git 推送 ../my-app` work without the human having to
+	// know which mechanism is which.
+	for (const value of wanted) {
+		const known = discovery.plugins.some((plugin) =>
+			[plugin.key, plugin.repo, plugin.dirName, plugin.name, plugin.configKey].includes(value),
+		)
+		if (known) continue
+		const candidate = resolve(cwd ?? process.cwd(), value)
+		if (!looksLikePath(value) && !existsSync(candidate)) {
+			problems.push(`未知插件：${value}（也可以直接给出目录路径，用来发布扫描结果之外的目录）`)
+			continue
+		}
+		const resolved = explicitTarget({
+			dir: candidate,
+			// Configuration may address an explicit target by whatever is stable:
+			// the string that was requested, the absolute path, or the folder name.
+			entry: targetEntry(config, value, candidate),
+			dshHome: DSH_HOME,
+		})
+		if (resolved.target !== undefined) {
+			selected.push(resolved.target)
+			continue
+		}
+		problems.push(resolved.problem)
+	}
+
+	/** @type {PlanEntry[]} */
+	const entries = []
+	for (const plugin of selected) {
+		const manifest = buildManifest({
+			dir: plugin.dir,
+			entry: plugin.entry,
+			excludeNames: config.excludeNames,
+			excludePatterns: config.excludePatterns,
+			maxFileBytes: config.maxFileBytes,
+		})
+		const entry = {
+			plugin,
+			manifest,
+			repository: config.github.owner === '' ? undefined : `${config.github.owner}/${plugin.repo}`,
+			visibility: plugin.visibility ?? config.visibility,
+			// The dsh-plugin topic is how the ecosystem lists DSH plugins, so it is
+			// the default only for things that are DSH plugins. A plain project gets
+			// no topic — unless one is asked for. An explicitly empty list stays empty:
+			// `topics: []` in a plugin entry is how a human says "do not tag this".
+			topics: Array.isArray(plugin.entry?.topics)
+				? plugin.entry.topics
+				: plugin.kind === 'dsh-plugin'
+					? config.github.topics
+					: [],
+			mirror: mirrorFor(config, plugin.repo),
+			// A license already in the plugin wins; otherwise a configured one is
+			// generated into the same commit. Planning states the intent without
+			// fetching anything, so a preview stays offline.
+			licenseFile: licenseFileOf(manifest),
+			warnings: manifest.warnings ?? [],
+			licenseToGenerate: licenseWanted(config, plugin),
+			blockers: [],
+			skipReason: undefined,
+		}
+		if (!plugin.enabled) entry.skipReason = '在 sync.config.json 里被 enabled: false 关掉了'
+		if (plugin.explicit === true) {
+			// Never a surprise: an explicitly named directory is reported as such, and
+			// a scan root is called out because publishing one means publishing
+			// everything below it as a single repository.
+			entry.warnings.push(
+				`「${plugin.dir}」是显式给出的目录，不在扫描结果里；按${plugin.kind === 'dsh-plugin' ? ' DSH 插件' : '普通项目'}处理。`,
+			)
+			if (roots.some((root) => resolve(root) === plugin.dir)) {
+				entry.warnings.push(
+					`这个目录就是扫描根目录本身（${plugin.dir}），会把该目录下的所有内容当成一个仓库发布。如果不是你想要的，请给出更具体的子目录。`,
+				)
+			}
+		}
+		if (config.github.owner === '') entry.blockers.push('没有配置 GitHub 账号：在 %USERPROFILE%\\.dsh\\github-sync\\config.json 里填 github.owner')
+		// The dsh- convention is about DSH plugins, so it is applied to the targets
+		// that actually are DSH plugins — the tool reports the fingerprint it used.
+		// Severity is configuration: a hard refusal is right for someone curating a
+		// consistently named set, while a warning is right for a plugin developed
+		// under a working name, since the harm is cosmetic (the repository reads as
+		// an outsider) and nothing was renamed behind anyone's back either way.
+		if (plugin.kind === 'dsh-plugin' && plugin.folderPrefixOk === false && plugin.repoFrom === 'folder-name') {
+			const advice = `${plugin.dirName} 是 DSH 插件（依据：${plugin.fingerprint.join('、')}），但文件夹名缺少 dsh- 前缀，所以仓库名会是「${plugin.repo}」，在 dsh-plugin 汇总里不太像同类。`
+			const how =
+				`改文件夹名为「${plugin.suggestedName}」后仓库名会自动跟着变（注意：改名会打断 profile 里按路径的 link: 依赖，需要重新安装/链接）；` +
+				`或者显式写 plugins「${plugin.configKey ?? plugin.dirName}」的 repo 来表达"这是有意的例外"。`
+			const severity = namingSeverity(config)
+			if (severity === 'block') entry.blockers.push(`${advice}${how}`)
+			else if (severity === 'warn') entry.warnings.push(`${advice}${how}（当前 naming 不为 block，所以只警告、不阻断。）`)
+		}
+		if (manifest.files.length === 0) entry.blockers.push('干净副本为空：检查该插件的 include 白名单或排除规则')
+		if (manifest.notes.length > 0) entry.blockers.push(...manifest.notes)
+		entries.push(entry)
+	}
+
+	return { roots: discovery.roots, entries, problems, pluginCount: discovery.plugins.length }
+}
+
+/**
+ * How strictly the `dsh-` folder convention is enforced.
+ *
+ * `warn` is the default: the convention exists so a published repository reads as
+ * a DSH plugin, which is worth saying out loud but is not worth refusing to
+ * publish over. `block` restores the hard refusal for someone curating a
+ * consistently named set.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @returns {'block' | 'warn' | 'off'} the effective severity.
+ */
+function namingSeverity(config) {
+	return config.naming ?? 'warn'
+}
+
+/**
+ * Resolve the license a plugin wants generated: an explicit per-plugin value
+ * first, then the global one. `null` or an empty string anywhere means "do not
+ * generate", which is the default — the plugin does not pick legal terms on a
+ * human's behalf.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @param {DiscoveredPlugin} plugin - the plugin being published.
+ * @returns {string | undefined} the license key to generate, when one is wanted.
+ */
+function licenseWanted(config, plugin) {
+	const perPlugin = plugin.entry?.license
+	if (perPlugin === null || perPlugin === '') return undefined
+	if (typeof perPlugin === 'string' && perPlugin.trim() !== '') return perPlugin.trim()
+	return config.github.license ?? undefined
+}
+
+/**
+ * Publish every planned entry.
+ *
+ * @param {object} options - push inputs.
+ * @param {ResolvedConfig} options.config - resolved configuration.
+ * @param {ReturnType<typeof plan>} options.plan - the plan to execute.
+ * @param {boolean} [options.dryRun] - stage and commit without pushing.
+ * @param {boolean} [options.createRepos] - create missing repositories through the API.
+ * @param {boolean} [options.verify] - check each repository through the API first.
+ * @param {boolean} [options.force] - replace the remote branch instead of fast-forwarding.
+ * @returns {Promise<{ results: PushResult[], warnings: string[], identity?: { login: string, type: string } }>} the outcome.
+ */
+export async function execute({ config, plan: planValue, dryRun = false, createRepos = true, verify = true, force = false }) {
+	const warnings = []
+	const gitProbe = resolveGit(config.git.executable)
+	if (!gitProbe.ok) throw new Error(gitProbe.hint)
+
+	const token = config.github.token
+	const needApi = !dryRun && config.github.owner !== '' && (verify || createRepos)
+	if (needApi && (typeof token !== 'string' || token.trim() === '')) {
+		throw new Error(
+			'没有可用的 GitHub token。\n' +
+				`把 token 写进 ${USER_CONFIG} 的 github.token，或设置环境变量 GITHUB_TOKEN，然后重试。\n` +
+				'fine-grained token 需要 Contents: Read and write（推送），建仓库还需要 Administration: Read and write。',
+		)
+	}
+
+	// The identity is read whenever a push is possible — not only when the
+	// repository has to be checked or created — because it decides who the commit
+	// is attributed to. Getting that wrong makes every commit show up on GitHub as
+	// an unlinked stranger.
+	let identity
+	const wantIdentity = !dryRun && typeof token === 'string' && token.trim() !== ''
+	if (wantIdentity) {
+		identity = await whoAmI({ apiBase: config.github.apiBase, token })
+		if (config.github.owner !== '' && identity.login.toLowerCase() !== config.github.owner.toLowerCase() && config.github.accountType !== 'org') {
+			warnings.push(
+				`配置的 github.owner 是 ${config.github.owner}，但 token 属于 ${identity.login}。` +
+					`推送会写到 token 拥有写权限的 ${config.github.owner}，如果不是你想要的，请改配置。`,
+			)
+		}
+	}
+	const committer = committerFrom(config, identity)
+
+	/** @type {PushResult[]} */
+	const results = []
+	for (const entry of planValue.entries) {
+		const { plugin, manifest } = entry
+		for (const warning of entry.warnings ?? manifest.warnings ?? []) {
+			if (!warnings.includes(warning)) warnings.push(warning)
+		}
+		const record = {
+			plugin: plugin.repo,
+			package: plugin.name,
+			directory: plugin.dir,
+			repository: entry.repository,
+			visibility: entry.visibility,
+			files: manifest.files.length,
+			bytes: manifest.totalBytes,
+			outcome: 'failed',
+			detail: [],
+		}
+
+		if (entry.skipReason !== undefined) {
+			record.outcome = 'skipped'
+			record.detail.push(entry.skipReason)
+			results.push(record)
+			continue
+		}
+		if (entry.blockers.length > 0) {
+			record.outcome = 'failed'
+			record.detail.push(...entry.blockers)
+			results.push(record)
+			continue
+		}
+
+		try {
+			let repoState
+			if (!dryRun && entry.repository !== undefined && (verify || createRepos)) {
+				repoState = await describeRepository({ apiBase: config.github.apiBase, token, repository: entry.repository })
+				if (!repoState.exists) {
+					if (!createRepos) {
+						throw new Error(`仓库 ${entry.repository} 不存在，而且 createRepos=false。先在 GitHub 上建好它，或允许插件建。`)
+					}
+					const created = await createRepository({
+						apiBase: config.github.apiBase,
+						token,
+						owner: config.github.owner,
+						accountType: config.github.accountType,
+						name: plugin.repo,
+						visibility: entry.visibility,
+						description: plugin.description,
+					})
+					record.detail.push(created.created ? `已新建仓库 ${entry.repository}（${entry.visibility}）` : `仓库 ${entry.repository} 已存在`)
+					record.outcome = 'created+pushed'
+					repoState = { exists: true }
+				}
+			}
+
+			// The generated license joins the same commit as the code, so a single
+			// snapshot still describes the whole published state.
+			if (entry.licenseToGenerate !== undefined && entry.licenseFile === undefined) {
+				try {
+					const generated = await buildLicenseEntry({
+						apiBase: config.github.apiBase,
+						token,
+						key: entry.licenseToGenerate,
+						copyright: config.github.copyright,
+						cacheDir: config.licensesDir,
+					})
+					manifest.extra = [...(manifest.extra ?? []), generated]
+					record.generatedLicense = generated.license
+				} catch (error) {
+					throw new Error(`${error.message}\n（或把 github.license 设为空字符串以关闭自动生成）`)
+				}
+			} else if (entry.licenseFile !== undefined) {
+				record.licenseFile = entry.licenseFile
+			} else {
+				warnings.push(
+					`${plugin.repo} 既没有 LICENSE 文件，也没有配置要生成的开源协议。公开仓库最好有一个：把 github.license 设为 MIT / Apache-2.0 / MPL-2.0 等即可自动生成。`,
+				)
+			}
+
+			const published = await publish({
+				manifest,
+				repository: entry.repository ?? 'dry-run/local',
+				mirror: entry.mirror,
+				helperPath: helperFor(config),
+				branch: config.git.branch,
+				commitMessage: commitMessage(config.git.commitMessageTemplate, plugin),
+				git: config.git.executable,
+				userName: committer.name,
+				userEmail: committer.email,
+				token,
+				tokenFile: USER_CONFIG,
+				dryRun,
+				force,
+			})
+			for (const warning of published.warnings ?? []) {
+				if (!warnings.includes(warning)) warnings.push(warning)
+			}
+			record.sha = published.sha
+			record.files = published.files
+			record.mirror = published.mirror
+			record.historyDepth = published.historyDepth
+			record.changed = published.changed
+			record.unchanged = published.unchanged
+
+			if (published.unchanged) {
+				record.outcome = 'unchanged'
+				record.detail.push('干净副本与远端已经一致，没有产生提交，也没有推送。')
+			} else if (dryRun) {
+				record.outcome = 'planned'
+				record.detail.push(`试运行：将提交 ${published.changed.length} 处变更（当前远端历史 ${published.historyDepth} 个提交），没有提交也没有推送`)
+				record.detail.push(...describeChanges(published.changed))
+			} else {
+				if (record.outcome !== 'created+pushed') record.outcome = 'pushed'
+				record.detail.push(
+					`已推送 ${published.changed.length} 处变更到 https://github.com/${entry.repository}` +
+						`（分支 ${config.git.branch}，提交 ${published.sha.slice(0, 10)}，历史 ${published.historyDepth} 个提交）`,
+				)
+				record.detail.push(...describeChanges(published.changed))
+
+				// Topics are applied after the code so a topics failure can never cost
+				// the upload. The repository exists by now, so the dedicated endpoint
+				// works for both fresh and pre-existing repositories.
+				const topics = Array.isArray(entry.topics) ? entry.topics : config.github.topics
+				if (topics.length > 0 && entry.repository !== undefined) {
+					try {
+						const applied = await setTopics({
+							apiBase: config.github.apiBase,
+							token,
+							repository: entry.repository,
+							topics,
+						})
+						record.topics = applied.topics
+						if (applied.applied) record.detail.push(`已打 topics：${applied.topics.join('、')}（见 https://github.com/topics/${applied.topics[0]}）`)
+					} catch (error) {
+						record.detail.push(`代码已推送，但设置 topics 失败（不影响代码）：${error.message}`)
+					}
+				}
+			}
+		} catch (error) {
+			record.outcome = 'failed'
+			record.detail.push(String(error.message ?? error))
+		}
+		results.push(record)
+	}
+
+	return { results, warnings, identity, committer }
+}
+
+/**
+ * Decide who a commit is signed by.
+ *
+ * Configuration wins when it is set, because a human may deliberately publish
+ * under a project identity. Otherwise the authenticated account is used, with
+ * GitHub's attributed noreply address so the commit is linked to the profile
+ * while the real email stays private.
+ *
+ * Note what attribution actually requires: the email on the commit must belong to
+ * (and be verified on) that GitHub account. An arbitrary address produces a
+ * commit GitHub cannot link, which is exactly what a made-up bot identity did.
+ *
+ * @param {ResolvedConfig} config - the resolved configuration.
+ * @param {{ login: string, id?: number, name?: string } | undefined} identity - the token's account.
+ * @returns {{ name: string, email: string, source: string }} the committer identity.
+ */
+function committerFrom(config, identity) {
+	const configuredName = config.git.userName
+	const configuredEmail = config.git.userEmail
+	const login = identity?.login
+	const fallbackName = login ?? 'dsh-github-sync'
+	const fallbackEmail =
+		login !== undefined && typeof identity?.id === 'number'
+			? `${identity.id}+${login}@users.noreply.github.com`
+			: login !== undefined
+				? `${login}@users.noreply.github.com`
+				: 'dsh-github-sync@users.noreply.github.com'
+	const name = configuredName ?? identity?.name ?? fallbackName
+	const email = configuredEmail ?? fallbackEmail
+	return {
+		name,
+		email,
+		source:
+			configuredName !== undefined || configuredEmail !== undefined
+				? '来自配置（git.userName / git.userEmail）'
+				: identity === undefined
+					? '默认值（未能读到账号）'
+					: `按账号 ${login} 派生`,
+	}
+}
+
+/**
+ * Render git's porcelain status codes as a short, honest change summary.
+ *
+ * @param {{ code: string, path: string }[]} changed - parsed `git status --porcelain`.
+ * @param {number} [limit] - how many entries to spell out.
+ * @returns {string[]} one line per change, plus a count when truncated.
+ */
+function describeChanges(changed, limit = 12) {
+	const label = (code) => {
+		if (code === 'A' || code === '??') return '新增'
+		if (code === 'M') return '修改'
+		if (code === 'D') return '删除'
+		if (code === 'R') return '改名'
+		if (code === 'T') return '类型变更'
+		return code
+	}
+	const lines = changed.slice(0, limit).map((item) => `  ${label(item.code)} ${item.path}`)
+	if (changed.length > limit) lines.push(`  …… 另有 ${changed.length - limit} 处`)
+	return lines
+}
+
+/**
+ * Rewrite the diagnostics file the plugin keeps beside itself.
+ *
+ * @param {object} value - the diagnostics payload.
+ * @returns {string} the file written.
+ */
+export function writeStatus(value) {
+	try {
+		writeFileSync(STATUS_FILE, `${JSON.stringify({ ...value, updatedAt: new Date().toISOString() }, null, 2)}\n`, 'utf8')
+	} catch {
+		// Diagnostics are a convenience; never fail a sync over them.
+	}
+	return STATUS_FILE
+}
+
+export default plan

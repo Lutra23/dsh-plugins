@@ -1,0 +1,34 @@
+{
+  "name": "@dsh-external/dsh-code-tools",
+  "description": "Ported VCP code-toolbox plugins as persistent DSH tools: deepwiki, git_search, git_operator, firecrawl_dev_search.",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "README.md",
+    "cordis.patch.yml",
+    "lib/",
+    "package.json",
+    "test/"
+  ]
+}

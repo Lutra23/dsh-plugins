@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tgz
+*.log
+.DS_Store
+Thumbs.db
+*.orig-*
+*.bak-*
+*.pre-*
+.idea/
+.vscode/

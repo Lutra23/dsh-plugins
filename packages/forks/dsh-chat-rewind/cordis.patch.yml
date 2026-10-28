@@ -1,0 +1,6 @@
+# Registers the host-side plugin (an empty shell — see index.js) so the bundle
+# is assembled into the profile and the browser half (exports["./client"]) is
+# shipped to the Web GUI. Slot contributions are registered from client.js.
+- insert:
+    - id: chat-rewind
+      name: '@local/dsh-chat-rewind'

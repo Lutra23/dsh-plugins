@@ -1,0 +1,4 @@
+# dsh-lens — bundle layer：把宿主行插进 loader 树。
+- insert:
+    - id: lens
+      name: dsh-lens

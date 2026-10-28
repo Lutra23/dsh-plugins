@@ -1,0 +1,64 @@
+- id: permission
+  name: '@deepseek-ai/dsh-permission-presets'
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+      vcp-smart:
+        name: VCP 智能审批
+        description: 完整文件权限，仅在 VCP 策略要求时由 DSH 统一询问一次。
+        sandbox: danger-full-access
+        approval: ask
+
+- id: experimental-inspector
+  name: '@deepseek-ai/dsh-experimental-inspector'
+  config:
+    captureFetch: true
+    maxSourceFrameBytes: 4194304
+
+- insert:
+    - id: vcp-agent-sync
+      name: '@local/dsh-vcp-bridge'
+      config:
+        vcpHome: !!js process.env.VCP_HOME || ''
+        snapshotUrl: http://127.0.0.1:6005/api/plugins/DSHAgentSync/snapshot
+        apiKeyEnv: VCPTOOLBOX_API_KEY
+        snapshotTimeoutMs: 5000
+        presetPrefix: vcp-agent
+        genericCompatId: vcp-compat
+        genericDualId: vcp-dual-stack
+        genericOmniId: vcp-omni
+        genericDeepId: vcp-deep-work
+        omniIdentityName: DSH主控
+        memoryReadFolders: DSH工程档案,公共
+        memoryWriteFolders: DSH工程档案
+        memoryToolsEnabled: true
+        memoryOwner: native
+        passiveRecallBoundaries: ''
+        passiveRecallFolders: ''
+        passiveRecallRoots: dailynote
+        passiveRecallLimit: 4
+        passiveRecallCandidateLimit: 12
+        passiveRecallBudgetChars: 4000
+        passiveRecallMinScore: 0.18
+        passiveRecallCooldownMs: 30000
+        passiveRecallFailureThreshold: 3
+        passiveRecallCircuitCooldownMs: 60000
+        memoryRerankMode: lexical
+        rerankUrl: ''
+        rerankModel: ''
+        rerankApiKeyEnv: ''
+        rerankTimeoutMs: 15000
+        intuitionCardPrefix: 直觉卡
+        enableProjectForge: true
+        enableForgeContext: true
+        deferStartupSync: true
+        watch: true
+        pollIntervalMs: 15000

@@ -1,0 +1,58 @@
+{
+  "name": "@local/dsh-vcp-bridge",
+  "version": "0.11.0",
+  "type": "module",
+  "exports": {
+    ".": "./agent-sync.mjs",
+    "./client": "./client.js",
+    "./bridge": "./index.mjs",
+    "./omni-controller": "./omni-controller.mjs",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.mjs",
+    "agent-sync.mjs",
+    "agent-contract.cjs",
+    "agent-snapshot.cjs",
+    "omni-controller.mjs",
+    "omni-state.mjs",
+    "memory-companion.mjs",
+    "optional-integrations.mjs",
+    "preset-templates.mjs",
+    "selection-state.mjs",
+    "client.js",
+    "Install-DshBundle.ps1",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-agent-preset"
+      ]
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*"
+  }
+}

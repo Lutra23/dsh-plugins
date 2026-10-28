@@ -1,0 +1,32 @@
+{
+  "name": "dsh-local-skills",
+  "version": "1.1.0",
+  "description": "Host-plane local utilities: (1) skill-filesystem provider covering default skill roots for all presets (cordis row-loss workaround, 2026-10-05); (2) ctx_meter tool - context budget telemetry via the host tokenMeter service.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "lib/",
+    "package.json"
+  ]
+}

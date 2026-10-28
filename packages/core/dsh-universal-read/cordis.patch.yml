@@ -1,0 +1,5 @@
+# dsh-universal-read bundle patch: registers the ported VCP FileOperator read commands into the profile roster.
+# Install with `dsh plugin --profile <desktop|web> add <this-directory>`.
+- insert:
+    - id: universal-read
+      name: '@dsh-external/dsh-universal-read'

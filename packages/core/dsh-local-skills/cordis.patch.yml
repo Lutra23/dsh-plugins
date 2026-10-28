@@ -1,0 +1,11 @@
+# Local skill-filesystem provider (workaround 2026-10-05): fresh row id escapes the
+# base host row id-scoped disable ("presets own local discovery"); providerName
+# local-user avoids colliding with the preset default "filesystem" and archify-plugin.
+# Default roots cover ~/.dsh/skills (user-dsh rank 400).
+- insert:
+    - id: local-skill-filesystem
+      name: '@deepseek-ai/dsh-skill-filesystem'
+      config:
+        providerName: local-user
+    - id: local-ctx-meter
+      name: dsh-local-skills

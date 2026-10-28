@@ -1,0 +1,15 @@
+{
+  "name": "mingyue-dsh-plugins",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MingYue workshop DSH plugin collection: 13 core, 2 forks, 2 VCP-side. Each package packs into an installable tgz with no hardcoded local paths.",
+  "type": "module",
+  "scripts": {
+    "pack": "node scripts/pack-all.mjs",
+    "check": "node scripts/check-paths.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}

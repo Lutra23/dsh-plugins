@@ -1,0 +1,61 @@
+{
+  "name": "@dsh-external/dsh-emoji",
+  "description": "DSH 表情包库：导入自己的表情包图片，在设置页管理（预览/筛选/多档宽度/删除），Agent 可在回复中按名字发送并实时调整显示宽度。",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.0-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
+    }
+  },
+  "scripts": {
+    "test": "node test/selftest.mjs && node test/e2e.mjs && node test/client.mjs",
+    "selftest": "node test/selftest.mjs",
+    "e2e": "node test/e2e.mjs",
+    "client": "node test/client.mjs",
+    "test:browser": "node test/shortcut-browser/serve.cjs 8931"
+  },
+  "dependencies": {
+    "jpeg-js": "0.4.4",
+    "pngjs": "7.0.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.1",
+    "@deepseek-ai/dsh-tools": "*",
+    "react": "^18.2.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "react-dom": "^18.3.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "README.md",
+    "cordis.patch.yml",
+    "lib/",
+    "package.json",
+    "test/",
+    "tools/"
+  ]
+}

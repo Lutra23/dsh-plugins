@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>running</title>
+  </head>
+  <body>
+    <h1>速记渲染试验台</h1>
+
+    <!-- 被测文本：默认宽命中 / 指定宽命中 / 未知名保持原文 / 代码块不替换 / 自带 @ 的名字 -->
+    <div id="transcript">
+      <p id="p1">第一张 :轻松拿捏: 默认宽</p>
+      <p id="p2">行内 :思考@40: 指定宽</p>
+      <p id="p3">写错保持原文 :不存在的表情:</p>
+      <p id="p4"><code>:轻松拿捏:</code> 代码块里不该被替换</p>
+      <p id="p5">自带 @ 的名字 :@_@: 应当命中</p>
+    </div>
+
+    <p>干扰源计数：<span id="noise">0</span></p>
+    <pre id="result">pending</pre>
+
+    <script>
+      // React 最小替身：overlay 组件只用到 useEffect（返回 null，不产出 DOM）。
+      window.__reactStub = {
+        useEffect: function (fn) {
+          window.__effectTeardown = fn()
+        },
+        createElement: function () {
+          return null
+        },
+        useState: function (value) {
+          return [value, function () {}]
+        },
+      }
+
+      window.__definition = null
+      window.__ModuleLoader__ = {
+        load: function (definition) {
+          window.__definition = definition
+        },
+      }
+    </script>
+
+    <script src="/lib/client.js"></script>
+
+    <script>
+      ;(function () {
+        var params = new URLSearchParams(location.search)
+        var noiseOn = params.get('noise') === '1'
+
+        function finish(ok, detail) {
+          var line = (ok ? 'PASS ' : 'FAIL ') + JSON.stringify(detail)
+          document.title = line
+          document.getElementById('result').textContent = line
+        }
+
+        function bail(why) {
+          finish(false, { reason: why })
+        }
+
+        var definition = window.__definition
+        if (definition === null) return bail('client.js 没有调用 __ModuleLoader__.load')
+
+        var mod
+        try {
+          mod = definition.factory(function (name) {
+            if (name === 'react') return window.__reactStub
+            throw new Error('不该 require：' + name)
+          })
+        } catch (error) {
+          return bail('factory 求值抛错：' + error.message)
+        }
+
+        // 捕获注册，手动挂上 shell.overlay 组件（等价于宿主的挂载动作）。
+        var overlay = null
+        var sectionCount = 0
+        var ctx = {
+          slots: {
+            // 与真实宿主一致：inject 返回 register 给的 disposer。
+            inject: function (name, callback) {
+              return callback()
+            },
+            register: function (def, component) {
+              if (def.name === 'shell.overlay') overlay = component
+              if (def.name === 'settings.section') sectionCount += 1
+              return function () {}
+            },
+          },
+          // 与真实宿主一致：effect 在挂载时执行回调，取它**返回**的 disposer，
+          // 但不会调用它。这里必须原样保留这个语义，否则测不出「挂载即自拆」。
+          effect: function (callback) {
+            window.__effectTeardown = callback()
+            return window.__effectTeardown
+          },
+          locale: {
+            bind: function () {
+              return function () {
+                return ''
+              }
+            },
+          },
+        }
+        try {
+          mod.apply(ctx)
+        } catch (error) {
+          return bail('apply 抛错：' + error.message)
+        }
+        if (overlay === null) return bail('没有注册 shell.overlay')
+
+        // 真跑组件的 effect（React 替身会同步执行它），扫描器由此启动。
+        try {
+          overlay()
+        } catch (error) {
+          return bail('组件执行抛错：' + error.message)
+        }
+
+        // 干扰源：每 100ms 改一次文本，模拟 GUI 里那些常驻动画与计时器。
+        var noise = 0
+        if (noiseOn) {
+          setInterval(function () {
+            noise += 1
+            document.getElementById('noise').textContent = String(noise)
+          }, 100)
+        }
+
+        setTimeout(function () {
+          var imgs = document.querySelectorAll('img.dsh-emoji-shortcut')
+          var widths = Array.prototype.map.call(imgs, function (img) {
+            return img.getAttribute('width') + '@' + img.getAttribute('alt')
+          })
+          var detail = {
+            imgs: imgs.length,
+            widths: widths,
+            src: imgs.length ? imgs[0].getAttribute('src') : '',
+            p3: document.getElementById('p3').textContent,
+            p4: document.getElementById('p4').textContent,
+            sections: sectionCount,
+            noise: noise,
+          }
+          var ok =
+            detail.imgs === 3 &&
+            detail.widths.indexOf('40@思考') >= 0 &&
+            detail.p3.indexOf(':不存在的表情:') >= 0 &&
+            detail.p4.indexOf(':轻松拿捏:') >= 0
+          finish(ok, detail)
+        }, 5000)
+      })()
+    </script>
+  </body>
+</html>

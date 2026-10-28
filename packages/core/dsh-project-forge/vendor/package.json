@@ -1,0 +1,4 @@
+{
+  "//": "把 vendor/ 整棵树钉为 CommonJS：VCPChat 原版引擎是 CJS，而插件根 package.json 是 type=module。",
+  "type": "commonjs"
+}

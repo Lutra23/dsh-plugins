@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DSH 施工图</title>
+<link rel="stylesheet" href="panel.css?v=1018a">
+<script src="panel.js?v=1018a" defer></script>
+</head>
+<body>
+
+<header class="titlebar">
+  <span class="mark" aria-hidden="true"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M3 1.8h7l3 3V14H3z"/><path d="M10 1.8V5h3"/><path d="M5.4 7.6h5.2M5.4 9.8h5.2M5.4 12h3"/></svg></span>
+  <strong class="brand">施工图</strong>
+  <span id="connection" role="status">正在连接</span>
+  <div class="toolbar">
+    <button id="refresh" title="重新拉取工程与文档数据">刷新</button>
+    <button id="permissions-toggle" aria-expanded="false" title="查看当前窗口可用的操作">操作权限</button>
+    <button id="sidebar-toggle" aria-expanded="true" title="收起或展开左侧列表">侧栏</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside id="sidebar">
+    <div class="library-tabs" aria-label="内容来源">
+      <button data-library="projects" aria-pressed="true">AI 工程</button>
+      <button data-library="documents" aria-pressed="false">文档</button>
+    </div>
+    <label class="search-field">查找工程或文档
+      <input id="filter" type="search" placeholder="名称、工程 ID 或路径">
+    </label>
+    <p id="library-hint" class="muted"></p>
+    <div id="documents"></div>
+    <details id="add-document" hidden>
+      <summary>添加已有施工图文档</summary>
+      <label>Markdown 文件完整路径<input id="document-path" placeholder="C:\…\docs\plan.md"></label>
+      <button id="register">添加文档</button>
+      <p class="muted">文件须位于已授权工作区。AI 创建的工程已自动列在“AI 工程”，无需在这里添加。</p>
+    </details>
+  </aside>
+
+  <main>
+    <div class="heading-row">
+      <div class="heading-text">
+        <h1 id="title">施工图</h1>
+        <p id="document-meta" class="muted"></p>
+      </div>
+      <button id="open-source" disabled>打开原文</button>
+    </div>
+
+    <div class="project-row">
+      <label>当前工程<select id="projects"><option value="">选择工程</option></select></label>
+      <button id="link-project" disabled>关联当前文档</button>
+      <span id="project-status" class="muted"></span>
+    </div>
+
+    <section id="permissions" hidden>
+      <h2>当前可用操作</h2>
+      <div id="permission-details"></div>
+      <p class="muted">权限由服务端实时校验；署名不会扩大访问范围。关闭窗口不取消后台操作。</p>
+    </section>
+
+    <section id="flow" class="flow-box" hidden aria-label="心流检查">
+      <div class="actions"><strong>心流检查</strong><label>执行会话<select id="flow-session"></select></label></div>
+      <p class="muted">在对应聊天中说“开启心流”“暂停心流”“继续心流”或“停止心流”。这里查看进度、预算、证据并验收。</p>
+      <details><summary>兼容心流状态</summary><p id="flow-state" role="status"></p></details>
+    </section>
+
+    <nav aria-label="施工图内容">
+      <button data-tab="plan" aria-pressed="true">施工图</button>
+      <button data-tab="todos" aria-pressed="false">待办</button>
+      <button data-tab="history" aria-pressed="false">变动脉络</button>
+      <button data-tab="report" aria-pressed="false">验收报告</button>
+      <button data-tab="operations" aria-pressed="false">操作记录</button>
+      <button data-tab="context" aria-pressed="false">上下文</button>
+    </nav>
+
+    <section id="goal-box" class="flow-box" hidden aria-label="目标心流"></section>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <button id="review-drafts" hidden>比较本地草稿</button>
+    <section id="content" aria-label="当前页面"><p>正在读取施工图…</p></section>
+  </main>
+</div>
+
+<dialog id="diff-dialog" aria-labelledby="diff-title">
+  <div class="dialog-heading"><h2 id="diff-title">文件差异</h2><button data-close="diff-dialog" aria-label="关闭差异">关闭</button></div>
+  <div id="diff-body"></div>
+</dialog>
+
+<dialog id="preview-dialog" aria-labelledby="preview-title">
+  <div class="dialog-heading"><h2 id="preview-title">回退预检</h2><button data-close="preview-dialog" aria-label="关闭预检">关闭</button></div>
+  <div id="preview-body"></div>
+  <label>回退原因<input id="rollback-reason" maxlength="500" placeholder="说明为什么恢复此版本"></label>
+  <button id="commit-rollback" class="danger" disabled>确认回退</button>
+  <p id="preview-status" role="status"></p>
+</dialog>
+
+<footer>
+  <span id="sync-time">尚未同步</span>
+  <span>本机工程管理 · 文档正文来自原文件</span>
+</footer>
+
+</body>
+</html>

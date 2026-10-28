@@ -1,0 +1,5 @@
+@dsh-external/dsh-forge-context
+
+This product includes software developed as a local DSH plugin.
+Kernel interfaces consumed via peerDependencies are supplied by the DSH host
+(0.2.0-rc.2, app.asar). Upstream provenance: docs/upstream-provenance.md.
