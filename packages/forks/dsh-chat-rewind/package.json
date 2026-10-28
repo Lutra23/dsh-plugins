@@ -43,5 +43,10 @@
     "package.json",
     "test/"
   ],
-  "main": "index.js"
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lutra23/dsh-plugins.git",
+    "directory": "packages/forks/dsh-chat-rewind"
+  }
 }

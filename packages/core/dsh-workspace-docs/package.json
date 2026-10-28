@@ -37,5 +37,10 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
     "@deepseek-ai/dsh-tools": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lutra23/dsh-plugins.git",
+    "directory": "packages/core/dsh-workspace-docs"
   }
 }

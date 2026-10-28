@@ -68,5 +68,10 @@
     "tools/",
     "ui/",
     "vendor/"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lutra23/dsh-plugins.git",
+    "directory": "packages/core/dsh-project-forge"
+  }
 }

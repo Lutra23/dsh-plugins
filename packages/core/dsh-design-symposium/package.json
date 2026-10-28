@@ -22,7 +22,8 @@
   "author": "HSM266 (original roundtable-harness) & MingYue workshop (symposium refactor)",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/HSM266/dsh-roundtable-harness.git"
+    "url": "git+https://github.com/Lutra23/dsh-plugins.git",
+    "directory": "packages/core/dsh-design-symposium"
   },
   "homepage": "https://github.com/HSM266/dsh-roundtable-harness#readme",
   "bugs": {
