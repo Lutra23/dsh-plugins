@@ -53,7 +53,7 @@ dist/          npm pack 产物（git 忽略）
 | `dsh-lens` | 0.1.0 | `kernel_list` / `kernel_file` / `kernel_grep` / `kernel_versions`：直接读 app.asar 内核 | 跨平台 |
 | `dsh-workspace-docs` | 0.3.1 | 工作区文档清单注入运行时上下文 | 跨平台 |
 | `dsh-design-symposium` | 0.5.0 | 多贤者设计研讨 + 主席收敛纪要（UI 面板） | 跨平台 |
-| `dsh-project-forge` | 0.4.1-local.5 | 工程施工台：账本、AST 检索、任务/回退 | win32-x64 自带索引器；`better-sqlite3` |
+| `dsh-project-forge` | 0.4.1-local.5 | 工程施工台：账本、AST 检索、任务/回退 | win32-x64；二进制从 [Releases](docs/BINARIES.md) 下载；`better-sqlite3` |
 | `dsh-forge-context` | 0.0.9 | 上下文压缩 / 整理（引擎半，宿主半在 project-forge 内） | 跨平台 |
 | `dsh-memo-recall` | 0.4.13 | 被动记忆召回（边界触发 + 熔断） | 跨平台；召回半需 VCP |
 | `dsh-vcp-tools` | 0.2.0 | `dailynote_write` / `lightmemo` / `doubao_search` / `chrome_bridge` | 跨平台；需 VCP 服务端 |

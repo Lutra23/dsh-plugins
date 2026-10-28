@@ -14,7 +14,7 @@
 | 包 | 条目 | 说明 |
 |---|---|---|
 | `dsh-project-forge` | `vendor/VCPDistributedServer/**` | VCPChat 原版逐字副本，许可随上游 |
-| `dsh-project-forge` | `tools/CodeSearcher.exe`、`vendor/**/projectforge_indexer.exe` | 预编译 Rust 索引器；**源 crate 声明 CC-BY-NC-SA-4.0（禁商用）**。商用需自行替换或取得授权 |
+| `dsh-project-forge` | `CodeSearcher.exe`、`projectforge_indexer.exe` | **不随仓库分发**，只在 GitHub Releases 提供；源 crate 声明 **CC-BY-NC-SA-4.0（禁商用）**。商用需自行替换或取得授权 |
 | `dsh-design-symposium` | `src/` 与 `lib/` | fork 自 `HSM266/dsh-roundtable-harness` v0.3.14（MIT），按 VCP MagiAgent 立场辩论改造 |
 
 ## VCP 侧

@@ -1,8 +1,11 @@
-# ProjectForge AST Indexer Runtimes
+# ProjectForge AST Indexer Runtime
 
-此目录由 `npm run build`（或 `npm run build:pf-indexer`）自动生成本机索引器 Release 运行时。
+此目录原本存放 `projectforge_indexer` 的预编译运行时。**二进制不随仓库分发**
+（体积 + 许可），改由 GitHub Releases 提供：
 
-目录约定：
+<https://github.com/Lutra23/dsh-plugins/releases>
+
+目录约定（与 `indexerClient.js` 的 `resolveDefaultBinaryPath` 一致）：
 
 ```text
 bin/
@@ -14,15 +17,11 @@ bin/
 │   └── projectforge_indexer
 ```
 
-构建脚本位于：
+放置优先级：
 
-```text
-rust_projectforge_indexer/build-runtime.js
-```
+1. `$DSH_PROJECTFORGE_BIN/projectforge_indexer[.exe]`
+2. 本目录（`<包目录>/vendor/VCPDistributedServer/Plugin/ProjectForge/bin/<platform>-<arch>/`）
+3. `~/.dsh/projectforge/bin/projectforge_indexer[.exe]`
 
-规则：
-
-1. 构建只原生编译当前操作系统和 CPU 架构；其他平台请在对应平台构建。
-2. 仓库跟踪 `win32-x64/projectforge_indexer.exe` 作为无 Rust 环境的 Windows x64 bootstrap 运行时（与 VCP-CDS 同策略）；协议版本（`PROTOCOL_VERSION`）或符号提取规则变化时必须与源码同步提交。其他本地生成的二进制不提交 Git。
-3. 二进制缺失或协议不匹配时插件不会失败：Outline / FindSymbol / `symbol=` 给出降级提示，其他施工命令照常可用。
-4. Windows 上重新构建前请先停止 VCPDistributedServer / VChat，否则运行中的 exe 会被锁定。
+缺失时插件不会崩：符号索引退回正则启发式，`status()` 会报熔断原因。
+构建脚本在上游 crate `rust_projectforge_indexer/build-runtime.js`（本仓库不含 crate 源）。

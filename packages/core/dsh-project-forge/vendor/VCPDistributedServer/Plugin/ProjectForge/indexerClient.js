@@ -8,6 +8,7 @@
 //   二进制缺失 / 协议不匹配属于确定性失败，直接熔断；进程崩溃按指数退避重启，超过上限熔断。
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const readline = require('readline');
@@ -59,10 +60,14 @@ function langOf(filePath) {
 }
 function resolveDefaultBinaryPath(platform = process.platform, arch = process.arch) {
     const name = platform === 'win32' ? 'projectforge_indexer.exe' : 'projectforge_indexer';
+    const envDir = process.env.DSH_PROJECTFORGE_BIN;
+    if (envDir) return path.join(envDir, name);
     let dir = path.join(__dirname, 'bin', `${platform}-${arch}`);
     const marker = `${path.sep}app.asar${path.sep}`;
     if (dir.includes(marker)) dir = dir.replace(marker, `${path.sep}app.asar.unpacked${path.sep}`);
-    return path.join(dir, name);
+    const inPackage = path.join(dir, name);
+    if (fs.existsSync(inPackage)) return inPackage;
+    return path.join(os.homedir(), '.dsh', 'projectforge', 'bin', name);
 }
 
 class IndexerError extends Error {

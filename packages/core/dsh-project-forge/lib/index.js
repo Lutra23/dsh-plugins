@@ -1,5 +1,7 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import fs from 'node:fs/promises'
+import { existsSync } from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getEngineClient } from './engine-client.js'
@@ -48,7 +50,17 @@ const { retirementHint } = createRequire(import.meta.url)('./retirement-trigger.
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 const SERVER = path.join(ROOT, 'lib', 'server.cjs')
 const DATA_DIR = path.join(ROOT, 'data')
-const SEARCHER_EXE = path.join(ROOT, 'tools', 'CodeSearcher.exe')
+// 二进制不随仓库分发（体积 + 许可），从 GitHub Release 下载后放到下列任一目录：
+//   1) $DSH_PROJECTFORGE_BIN/CodeSearcher.exe
+//   2) <包目录>/tools/CodeSearcher.exe
+//   3) ~/.dsh/projectforge/bin/CodeSearcher.exe
+const BIN_DIRS = [
+  process.env.DSH_PROJECTFORGE_BIN,
+  path.join(ROOT, 'tools'),
+  path.join(os.homedir(), '.dsh', 'projectforge', 'bin'),
+].filter(Boolean)
+const SEARCHER_EXE = BIN_DIRS.map((dir) => path.join(dir, 'CodeSearcher.exe')).find(existsSync)
+  || path.join(BIN_DIRS[BIN_DIRS.length - 1], 'CodeSearcher.exe')
 
 /**
  * 判断路径是否落在 asar 归档内部。
@@ -419,9 +431,7 @@ export default {
           // Node 在 cwd 无效时同样报 "spawn <exe> ENOENT"，且报错里只写可执行文件名。
           // 不说明白，这个 ENOENT 会把人带去查一个完好无损的二进制。
           if (/ENOENT/u.test(msg)) {
-            return `**搜索错误**：${msg}\n\n⚠️ 此 ENOENT 未必是找不到 \`${SEARCHER_EXE}\`（该文件存在）。`
-              + `cwd 对真实子进程不可用时，Node 报的同样是 ENOENT，而报错只点名可执行文件。`
-              + `本次 cwd：\`${base}\``
+            return '**搜索错误**：' + msg + String.fromCharCode(10, 10) + '⚠️ 两种可能：① `' + SEARCHER_EXE + '` 不存在——从 GitHub Release 下载 CodeSearcher.exe 放进该目录，或设 `DSH_PROJECTFORGE_BIN` 指向其所在目录；② cwd 对真实子进程不可用——Node 对两者都报 ENOENT 且只点名可执行文件。本次 cwd：`' + base + '`'
           }
           return `**搜索错误**：${msg}`
         }

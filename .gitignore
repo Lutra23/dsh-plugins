@@ -9,3 +9,7 @@ Thumbs.db
 *.pre-*
 .idea/
 .vscode/
+*.exe
+*.dll
+*.node
+packages/core/dsh-project-forge/vendor/**/bin/
