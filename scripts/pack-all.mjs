@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +19,7 @@ for (const layer of layers) {
       continue;
     }
     try {
-      const file = execFileSync('npm', ['pack', '--pack-destination', out, '--silent'], {
+      const file = execSync('npm pack --pack-destination "' + out + '" --silent', {
         cwd: dir,
         encoding: 'utf8',
         stdio: ['ignore', 'pipe', 'pipe'],
