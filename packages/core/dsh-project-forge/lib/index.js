@@ -18,8 +18,6 @@ import { createRequire } from 'node:module'
 /** 本进程加载时的包版本：与「磁盘现值」「daemon pluginVersion」三方对账用（见 Version 命令）。 */
 const pkg = createRequire(import.meta.url)('../package.json')
 
-/** 补丁形状探测（P0.2）：纯函数，命中才给 advisory，不阻断写入；判据与信号表见 lib/patch-shape.cjs。 */
-const { patchShapeHint } = createRequire(import.meta.url)('./patch-shape.cjs')
 /** 会引入新代码路径的命令：只有这些才需要 owner-first 提示（读类命令提示是噪声）。 */
 const WRITE_COMMANDS = new Set(['EditCode', 'CreateFile', 'MoveCode', 'CopyCode', 'RemoveFile', 'MoveFile'])
 /** reason 枚举前缀（P1.1）：每会话只提醒一次的软提示，零阻断；词表与解析见 lib/reason-taxonomy.cjs。 */
@@ -30,9 +28,6 @@ const reasonReminder = createReasonReminder()
 const { suggestNext } = createRequire(import.meta.url)('./error-navigator.cjs')
 /** 改动必要性检查（P4.1）：命中 target===replace 的空写时提示，不阻断。 */
 const { noChangeHint } = createRequire(import.meta.url)('./change-necessity.cjs')
-/** 退役触发器检查（P4.2）：引入 compat/fallback 却未说明何时删时提示，不阻断。 */
-const { retirementHint } = createRequire(import.meta.url)('./retirement-trigger.cjs')
-
 /**
  * dsh-project-forge · 工程施工台 + 代码搜索器（DSH 移植版）
  *
@@ -227,20 +222,14 @@ export default {
           }
           const parts = (result && result.content) || []
           const text = parts.filter((p) => p && p.type === 'text').map((p) => p.text).join('\n')
-          // P0.2：写命令且回执成功时附补丁形状提示（纯函数，未命中返回空串，零额外引擎调用）。
-          const shapeHint = WRITE_COMMANDS.has(command) && result.receipt?.status === 'committed'
-            ? patchShapeHint(a)
-            : ''
           // P1.1：reason 缺枚举前缀时，每会话只提醒一次（不阻断，原文照常记录）。
           const reasonHint = WRITE_COMMANDS.has(command) && result.receipt?.status === 'committed'
             ? reasonReminder.build(a, exec?.agent?.session?.id)
             : ''
           // P4.1：改动必要性——target 与 replace 相同时提示（0.40% 频率，不阻断）。
           const necessityHint = result.receipt?.status === 'committed' ? noChangeHint(a) : ''
-          // P4.2：退役触发器——引入 compat/fallback 却未说明何时删时提示（1.87% 频率，不阻断）。
-          const retireHint = result.receipt?.status === 'committed' ? retirementHint(a) : ''
-          if (a.minify) return minify(text)+shapeHint+reasonHint+necessityHint+retireHint+receiptText(result.receipt)+syncWarning
-          return (text || `（${command} 未返回内容）`)+shapeHint+reasonHint+necessityHint+retireHint+receiptText(result.receipt)+syncWarning
+          if (a.minify) return minify(text)+reasonHint+necessityHint+receiptText(result.receipt)+syncWarning
+          return (text || `（${command} 未返回内容）`)+reasonHint+necessityHint+receiptText(result.receipt)+syncWarning
         } catch (error) {
           const message = error && error.message ? error.message : String(error)
           const receipt = error && error.receipt
