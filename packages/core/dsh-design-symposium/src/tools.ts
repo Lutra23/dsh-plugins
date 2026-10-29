@@ -291,8 +291,8 @@ export function registerSymposiumTools(
       action: { type: 'string', description: 'list=查看配置；set=修改。缺省 list' },
       target: { type: 'string', description: 'set 时的目标：sage=某个贤者，chair=主席。缺省 sage' },
       id: { type: 'string', description: 'target=sage 时的贤者 id（如 pragma/purist/adversary/scribe）' },
-      provider: { type: 'string', description: '新的 provider 路由，如 deepseek-official' },
-      model: { type: 'string', description: '新的模型 id，如 deepseek-flash 或 deepseek-v4-pro' },
+      provider: { type: 'string', description: '新的 provider 路由（宿主配置里的路由名）' },
+      model: { type: 'string', description: '新的模型 id（该路由下的模型名）' },
     },
     output: {
       schema: { type: 'string' },
@@ -317,7 +317,7 @@ export function registerSymposiumTools(
           `主席：${chair}${config.chair.enabled ? '' : '（已禁用）'}`,
           `轮数上限 ${config.maxRounds} · 首轮盲评 ${config.firstRoundBlind ? '开' : '关'}`,
           '',
-          '改模型：action=set target=sage id=<贤者id> provider=deepseek-official model=deepseek-v4-pro',
+          '改模型：action=set target=sage id=<贤者id> provider=<路由> model=<模型>',
         ].join('\n');
       }
       const provider = args.provider?.trim() ?? '';

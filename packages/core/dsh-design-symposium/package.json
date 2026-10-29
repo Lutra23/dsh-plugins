@@ -25,9 +25,9 @@
     "url": "git+https://github.com/Lutra23/dsh-plugins.git",
     "directory": "packages/core/dsh-design-symposium"
   },
-  "homepage": "https://github.com/HSM266/dsh-roundtable-harness#readme",
+  "homepage": "https://github.com/Lutra23/dsh-design-symposium#readme",
   "bugs": {
-    "url": "https://github.com/HSM266/dsh-roundtable-harness/issues"
+    "url": "https://github.com/Lutra23/dsh-plugins/issues"
   },
   "keywords": [
     "deepseek",

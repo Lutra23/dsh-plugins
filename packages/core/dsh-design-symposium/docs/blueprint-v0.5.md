@@ -1,7 +1,7 @@
 # dsh-design-symposium v0.5 施工图
 
 > 基线：工作树当前状态（0.4.0，未提交改动 34 文件），`tsc` 0 错、`npm run verify` 30/30（实为 29 项，见 P0-3）。
-> 工程账本：project_forge `psryc`（工作区 `MingYue`，路径相对仓库根）。写操作带 `todo` 序号与 `reason`。
+> 工程账本：project_forge（路径相对仓库根）。写操作带 `todo` 序号与 `reason`。
 > 本文是施工唯一依据；与代码冲突时以**现场代码**为准并在交付说明里点名差异。
 
 ## 0. 为什么改
@@ -15,7 +15,7 @@
 
 ## 1. 施工总则（硬约束）
 
-- 只改 `workshop/dsh-design-symposium/`。不 push、不 commit（主人另行决定）。
+- 只改本仓库。提交前必须 `typecheck` / `verify` / `build` 全绿。
 - 每个工作包结束必须：`npm run typecheck` 0 错 → `npm run verify` 全绿（项数只增不减）→ `npm run build` 产出 `lib/index.js`。
 - `lib/` 是装机物：desktop profile 经 `link:` 直接指向本目录，改完 build 后**需重启 DSH App** 才生效；施工方不要重启 App，交付时注明即可。
 - 不手改 `~/.dsh/symposium.json`；结构变更走 `normalizeConfig`（`src/config.ts:293`）迁移，旧文档必须能读。
@@ -99,7 +99,7 @@ interface Brief {
 
 | 档 | seats（sage id） | rounds | maxTokensPerTurn | chair | maxQuestions/场 | maxTokens（整场硬顶） | Brief 要求 |
 |---|---|---|---|---|---|---|---|
-| `quick` | `adversary, pragma` | 1 | 600 | `newapi/AIclaudecode/gemini-3.8-flash` | 0（不暂停，求证进纪要） | 30_000 | lite |
+| `quick` | `adversary, pragma` | 1 | 600 | 档位自定义（可选） | 0（不暂停，求证进纪要） | 30_000 | lite |
 | `standard`（默认） | `pragma, purist, adversary` | 2 | 1024 | 用 `config.chair` | 3 | 100_000 | full |
 | `deep` | 全部 | ≤4（固定跑满） | 1400 | 用 `config.chair` | 8 | 400_000 | full |
 

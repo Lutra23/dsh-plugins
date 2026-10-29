@@ -3580,8 +3580,8 @@ function registerSymposiumTools(ctx, service, tools) {
       action: { type: "string", description: "list=\u67E5\u770B\u914D\u7F6E\uFF1Bset=\u4FEE\u6539\u3002\u7F3A\u7701 list" },
       target: { type: "string", description: "set \u65F6\u7684\u76EE\u6807\uFF1Asage=\u67D0\u4E2A\u8D24\u8005\uFF0Cchair=\u4E3B\u5E2D\u3002\u7F3A\u7701 sage" },
       id: { type: "string", description: "target=sage \u65F6\u7684\u8D24\u8005 id\uFF08\u5982 pragma/purist/adversary/scribe\uFF09" },
-      provider: { type: "string", description: "\u65B0\u7684 provider \u8DEF\u7531\uFF0C\u5982 deepseek-official" },
-      model: { type: "string", description: "\u65B0\u7684\u6A21\u578B id\uFF0C\u5982 deepseek-flash \u6216 deepseek-v4-pro" }
+      provider: { type: "string", description: "\u65B0\u7684 provider \u8DEF\u7531\uFF08\u5BBF\u4E3B\u914D\u7F6E\u91CC\u7684\u8DEF\u7531\u540D\uFF09" },
+      model: { type: "string", description: "\u65B0\u7684\u6A21\u578B id\uFF08\u8BE5\u8DEF\u7531\u4E0B\u7684\u6A21\u578B\u540D\uFF09" }
     },
     output: {
       schema: { type: "string" },
@@ -3602,7 +3602,7 @@ function registerSymposiumTools(ctx, service, tools) {
           `\u4E3B\u5E2D\uFF1A${chair}${config.chair.enabled ? "" : "\uFF08\u5DF2\u7981\u7528\uFF09"}`,
           `\u8F6E\u6570\u4E0A\u9650 ${config.maxRounds} \xB7 \u9996\u8F6E\u76F2\u8BC4 ${config.firstRoundBlind ? "\u5F00" : "\u5173"}`,
           "",
-          "\u6539\u6A21\u578B\uFF1Aaction=set target=sage id=<\u8D24\u8005id> provider=deepseek-official model=deepseek-v4-pro"
+          "\u6539\u6A21\u578B\uFF1Aaction=set target=sage id=<\u8D24\u8005id> provider=<\u8DEF\u7531> model=<\u6A21\u578B>"
         ].join("\n");
       }
       const provider = args.provider?.trim() ?? "";

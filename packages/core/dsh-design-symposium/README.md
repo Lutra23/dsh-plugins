@@ -92,6 +92,8 @@
 
 环境变量覆盖（免重启）：`CHAIR_MODEL` / `CHAIR_PERSONA` / `SYMPOSIUM_OUTPUT_DIR`。
 
+> `provider` / `model` 留空表示不绑定：该席会被跳过并记 anomaly。`examples/symposium.example.json` 里的绑定故意留空，跑之前先用 `symposium_config list` 查本机路由再填。
+
 ## 安装（desktop profile，手动注册配方）
 
 desktop profile 由 Electron 独占管理，`dsh plugin add` 会被拒绝，走手动注册：

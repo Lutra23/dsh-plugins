@@ -1,6 +1,6 @@
 # dsh-design-symposium 改造蓝图
 
-> fork 自 [HSM266/dsh-design-symposium](https://github.com/HSM266/dsh-design-symposium) v0.3.14（MIT）。
+> fork 自 [HSM266/dsh-roundtable-harness](https://github.com/HSM266/dsh-roundtable-harness) v0.3.14（MIT）。
 > 哲学指导：VCPToolBox `MagiAgent`（立场贤者多轮辩论、可见修正、综合结论）+ `AgentAssistant`（异步委托查询）+ VCPChat 群聊（发言编排/话题总结）。
 > 定位转型：**多模型辩论赛（娱乐评测）→ 设计研讨会（立场碰撞出设计决策）**。
 
